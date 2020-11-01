@@ -3,9 +3,33 @@
     <em>A FastAPI Middleware of joerick/pyinstrument to check your service performance.</em>
 </p>
 <p align="center">
+    <a href="https://travis-ci.org/sunhailin-Leo/fastapi_profiler">
+        <img src="https://travis-ci.org/sunhailin-Leo/fastapi_profiler?branch=main" alt="Travis Build Status">
+    </a>
+    <a href="https://ci.appveyor.com/project/sunhailin-Leo/fastapi_profiler">
+        <img src="https://ci.appveyor.com/api/projects/status/b77so9mpxguhyy1a/branch/main?svg=true" alt="Appveyor Build Status">
+    </a>
+    <a href="https://codecov.io/gh/sunhailin-Leo/fastapi_profiler">
+        <img src="https://codecov.io/gh/sunhailin-Leo/fastapi_profiler/branch/main/graph/badge.svg" alt="Codecov">
+    </a>
+    <a href="https://badge.fury.io/py/fastapi_profiler">
+        <img src="https://badge.fury.io/py/fastapi_profiler.svg" alt="Package version">
+    </a>
+    <a href="https://pypi.org/project/fastapi_profiler/">
+        <img src="https://img.shields.io/pypi/pyversions/fastapi_profiler.svg?colorB=brightgreen" alt="PyPI - Python Version">
+    </a>
 </p>
 
 <p align="center">
+    <a href="https://pypi.org/project/fastapi_profiler">
+        <img src="https://img.shields.io/pypi/format/fastapi_profiler.svg" alt="PyPI - Format">
+    </a>
+     <a href="https://github.com/sunhailin-LEO/fastapi_profiler/pulls">
+        <img src="https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat" alt="Contributions welcome">
+    </a>
+    <a href="https://opensource.org/licenses/MIT">
+        <img src="https://img.shields.io/badge/License-MIT-brightgreen.svg" alt="License">
+    </a>
 </p>
 
 ## 📣 Info
