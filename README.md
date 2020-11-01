@@ -12,8 +12,8 @@
     <a href="https://codecov.io/gh/sunhailin-Leo/fastapi_profiler">
         <img src="https://codecov.io/gh/sunhailin-Leo/fastapi_profiler/branch/main/graph/badge.svg" alt="Codecov">
     </a>
-    <a href="https://badge.fury.io/py/fastapi_profiler">
-        <img src="https://badge.fury.io/py/fastapi_profiler.svg" alt="Package version">
+    <a href="https://img.shields.io/pypi/v/fastapi_profiler">
+        <img src="https://img.shields.io/pypi/v/fastapi_profiler.svg" alt="Package version">
     </a>
     <a href="https://pypi.org/project/fastapi_profiler/">
         <img src="https://img.shields.io/pypi/pyversions/fastapi_profiler.svg?colorB=brightgreen" alt="PyPI - Python Version">
