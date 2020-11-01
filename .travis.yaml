@@ -1,0 +1,22 @@
+sudo: false
+language: python
+notifications:
+  email:
+    recipients:
+      - 379978424@qq.com
+    on_success: always # default: change
+    on_failure: always # default: always
+python:
+  - "3.9"
+  - "3.8"
+  - "3.8"
+  - "3.7"
+  - "3.6"
+before_install:
+  - pip install -r test/requirements.txt
+script:
+  - python setup.py install
+  - bash test.sh
+after_success:
+  cd test && codecov
+
