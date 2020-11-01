@@ -4,7 +4,7 @@
 </p>
 <p align="center">
     <a href="https://travis-ci.org/sunhailin-Leo/fastapi_profiler">
-        <img src="https://travis-ci.org/sunhailin-Leo/fastapi_profiler?branch=main" alt="Travis Build Status">
+        <img src="https://travis-ci.com/sunhailin-Leo/fastapi_profiler.svg?branch=main" alt="Travis Build Status">
     </a>
     <a href="https://ci.appveyor.com/project/sunhailin-Leo/fastapi_profiler">
         <img src="https://ci.appveyor.com/api/projects/status/b77so9mpxguhyy1a/branch/main?svg=true" alt="Appveyor Build Status">
