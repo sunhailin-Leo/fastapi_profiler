@@ -45,7 +45,7 @@ $ pip install fastapi_profiler -U
 
 ## 📝 Example
 
-Jump to example folder.[Example]()
+Jump to example folder.[Example](https://github.com/sunhailin-Leo/fastapi_profiler/blob/main/example/fastapi_example.py)
 
 ## ⛏ Test the Code
 
