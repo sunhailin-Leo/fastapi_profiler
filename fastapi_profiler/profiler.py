@@ -1,3 +1,6 @@
+__version__ = "1.0.0"
+__author__ = "sunhailin-Leo"
+
 import os
 import time
 import codecs

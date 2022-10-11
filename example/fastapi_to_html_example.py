@@ -8,7 +8,7 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
-from fastapi_profiler.profiler_middleware import PyInstrumentProfilerMiddleware
+from fastapi_profiler import PyInstrumentProfilerMiddleware
 
 
 app = FastAPI()

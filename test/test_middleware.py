@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 from fastapi.responses import JSONResponse
 
 from test import stdout_redirect
-from fastapi_profiler.profiler_middleware import PyInstrumentProfilerMiddleware
+from fastapi_profiler import PyInstrumentProfilerMiddleware
 
 
 @pytest.fixture(name="test_middleware")
