@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 from fastapi.responses import JSONResponse
 
 from test import stdout_redirect
-from fastapi_profiler.profiler_middleware import PyInstrumentProfilerMiddleware
+from fastapi_profiler import PyInstrumentProfilerMiddleware
 
 
 @pytest.fixture(name="test_middleware")
@@ -45,17 +45,17 @@ class TestProfilerMiddleware:
         sys.stdout = temp_stdout
         assert (f"Path: {request_path}" in stdout_redirect.fp.getvalue())
 
-    def test_profiler_export_to_html(self, test_middleware):
-        full_path = f"{os.getcwd()}/test.html"
+    def test_profiler_export_to_html(self, test_middleware, tmpdir):
+        full_path = tmpdir / "test.html"
 
         with TestClient(test_middleware(
                 profiler_output_type="html",
                 is_print_each_request=False,
-                html_file_name=full_path)) as client:
+                profiler_interval=0.0000001,
+                html_file_name=str(full_path))) as client:
             # request
             request_path = "/test"
             client.get(request_path)
 
         # HTML will record the py file name.
-        with open(full_path, "r") as f:
-            assert ("profiler.py" in f.read())
+        assert "profiler.py" in full_path.read_text("utf-8")

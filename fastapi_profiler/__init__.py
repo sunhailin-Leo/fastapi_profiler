@@ -1,2 +1,2 @@
-from fastapi_profiler import profiler_middleware
-from fastapi_profiler._version import __author__, __version__
+from ._version import __version__, __author__
+from .profiler import PyInstrumentProfilerMiddleware

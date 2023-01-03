@@ -1,3 +1,7 @@
+__version__ = "1.0.0"
+__author__ = "sunhailin-Leo"
+
+import os
 import time
 import codecs
 from typing import Optional
@@ -15,6 +19,8 @@ logger = getLogger("profiler")
 
 
 class PyInstrumentProfilerMiddleware:
+    DEFAULT_HTML_FILENAME = "./fastapi-profiler.html"
+
     def __init__(
         self, app: ASGIApp,
         *,
@@ -22,21 +28,29 @@ class PyInstrumentProfilerMiddleware:
         profiler_interval: float = 0.0001,
         profiler_output_type: str = "text",
         is_print_each_request: bool = True,
+        html_file_name: Optional[str] = None,
+        open_in_browser: bool = False,
         **profiler_kwargs
     ):
         self.app = app
         self._profiler = Profiler(interval=profiler_interval)
-
-        self._server_app = server_app
         self._output_type = profiler_output_type
         self._print_each_request = is_print_each_request
+        self._html_file_name: Optional[str] = html_file_name
+        self._open_in_browser: bool = open_in_browser
         self._profiler_kwargs: dict = profiler_kwargs
 
-    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        # register an event handler for profiler stop
-        if self._server_app is not None:
-            self._server_app.add_event_handler("shutdown", self.get_profiler_result)
+        if profiler_output_type == "html" and server_app is None:
+            raise RuntimeError(
+                "If profiler_output_type=html, must provide server_app argument "
+                "to set shutdown event handler to output profile."
+            )
 
+        # register an event handler for profiler stop
+        if server_app is not None:
+            server_app.add_event_handler("shutdown", self.get_profiler_result)
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
@@ -73,33 +87,27 @@ class PyInstrumentProfilerMiddleware:
 
     async def get_profiler_result(self):
         if self._output_type == "text":
+            logger.info("Compiling and printing final profile")
             print(self._profiler.output_text(**self._profiler_kwargs))
         elif self._output_type == "html":
-            html_name = self._profiler_kwargs.get("html_file_name")
-            if html_name is None:
-                html_name = "fastapi-profiler.html"
+            html_file_name = self.DEFAULT_HTML_FILENAME
+            if self._html_file_name is not None:
+                html_file_name = self._html_file_name
 
-            """
-             There are some problems with the args -- output_filename.
-             You can check the
-                class
-                    'from pyinstrument.renderers import HTMLRenderer'
-                method
-                    'open_in_browser'
-             the argument 'output_filename' will become the URL like 'file://xxxx',
-             but that code have some bugs on it.
+            logger.info(
+                "Compiling and dumping final profile to %r - this may take some time",
+                html_file_name,
+            )
 
-             So on my middleware, the args 'html_file_name'
-             I suggest use None to instead, or you can use the absolute path.
+            renderer = HTMLRenderer()
+            if self._open_in_browser:
+                renderer.open_in_browser(
+                    session=self._profiler.last_session,
+                    output_filename=os.path.abspath(html_file_name),
+                )
+            else:
+                html_code = renderer.render(session=self._profiler.last_session)
+                with codecs.open(html_file_name, "w", "utf-8") as f:
+                    f.write(html_code)
 
-             HTMLRenderer().open_in_browser(
-                session=self._profiler.last_session,
-                output_filename=html_name,
-             )
-
-             At last, I rewrite the function to avoid the problem!
-             By the way, the html file default save at the root path of your project.
-            """
-            html_code = HTMLRenderer().render(session=self._profiler.last_session)
-            with codecs.open(html_name, "w", "utf-8") as f:
-                f.write(html_code)
+            logger.info("Done writing profile to %r", html_file_name)
