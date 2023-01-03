@@ -1,2 +1,2 @@
 fastapi
-pyinstrument
+pyinstrument>=4.4.0

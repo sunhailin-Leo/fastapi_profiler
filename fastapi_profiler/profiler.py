@@ -1,6 +1,3 @@
-__version__ = "1.0.0"
-__author__ = "sunhailin-Leo"
-
 import os
 import time
 import codecs
@@ -28,12 +25,13 @@ class PyInstrumentProfilerMiddleware:
         profiler_interval: float = 0.0001,
         profiler_output_type: str = "text",
         is_print_each_request: bool = True,
+        async_mode: str = "enabled",
         html_file_name: Optional[str] = None,
         open_in_browser: bool = False,
         **profiler_kwargs
     ):
         self.app = app
-        self._profiler = Profiler(interval=profiler_interval)
+        self._profiler = Profiler(interval=profiler_interval, async_mode=async_mode)
         self._output_type = profiler_output_type
         self._print_each_request = is_print_each_request
         self._html_file_name: Optional[str] = html_file_name

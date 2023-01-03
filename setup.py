@@ -13,7 +13,7 @@ __description__ = "A FastAPI Middleware of pyinstrument " \
 __url__ = "https://github.com/sunhailin-Leo/fastapi_profiler"
 __author_email__ = "379978424@qq.com"
 __license__ = "MIT"
-__requires__ = ["fastapi", "pyinstrument"]
+__requires__ = ["fastapi", "pyinstrument>=4.4.0"]
 __keywords__ = ["fastapi", "pyinstrument", "profiler"]
 
 # Load the package's _version.py module as a dictionary.
@@ -91,6 +91,8 @@ setup(
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
         "Topic :: Software Development :: Libraries",
     ],
     cmdclass={"upload": UploadCommand},

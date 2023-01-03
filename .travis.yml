@@ -7,11 +7,12 @@ notifications:
     on_success: always # default: change
     on_failure: always # default: always
 python:
+  - "3.11"
+  - "3.10"
   - "3.9"
   - "3.8"
   - "3.8"
   - "3.7"
-  - "3.6"
 before_install:
   - pip install -r test/requirements.txt
 script:
