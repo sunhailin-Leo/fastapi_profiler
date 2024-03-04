@@ -7,7 +7,7 @@ from typing import Optional
 from logging import getLogger
 
 from pyinstrument import Profiler
-from pyinstrument.renderers import HTMLRenderer
+from pyinstrument.renderers import HTMLRenderer, JSONRenderer
 
 from starlette.routing import Router
 from starlette.requests import Request
@@ -20,6 +20,7 @@ logger = getLogger("profiler")
 class PyInstrumentProfilerMiddleware:
     DEFAULT_HTML_FILENAME = "./fastapi-profiler.html"
     DEFAULT_PROF_FILENAME = "./fastapi-profiler.prof"
+    DEFAULT_JSON_FILENAME = "./fastapi-profiler.json"
 
     def __init__(
         self,
@@ -142,4 +143,18 @@ class PyInstrumentProfilerMiddleware:
             )
 
             self._profiler.dump_stats(prof_file_name)
+            logger.info("Done writing profile to %r", prof_file_name)
+        elif self._output_type == "json":
+            prof_file_name = self.DEFAULT_JSON_FILENAME
+            if self._prof_file_name is not None:
+                prof_file_name = self._prof_file_name
+
+            logger.info(
+                "Compiling and dumping final profile to %r - this may take some time",
+                prof_file_name,
+            )
+
+            renderer = JSONRenderer()
+            with codecs.open(prof_file_name, "w", "utf-8") as f:
+                f.write(renderer.render(session=self._profiler.last_session))
             logger.info("Done writing profile to %r", prof_file_name)
