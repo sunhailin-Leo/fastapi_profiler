@@ -7,7 +7,7 @@ from typing import Optional
 from logging import getLogger
 
 from pyinstrument import Profiler
-from pyinstrument.renderers import HTMLRenderer, JSONRenderer
+from pyinstrument.renderers import HTMLRenderer, JSONRenderer, SpeedscopeRenderer
 
 from starlette.routing import Router
 from starlette.requests import Request
@@ -21,6 +21,7 @@ class PyInstrumentProfilerMiddleware:
     DEFAULT_HTML_FILENAME = "./fastapi-profiler.html"
     DEFAULT_PROF_FILENAME = "./fastapi-profiler.prof"
     DEFAULT_JSON_FILENAME = "./fastapi-profiler.json"
+    DEFAULT_SPEEDSCOPE_FILENAME = "./fastapi-profiler-speedscope.json"
 
     def __init__(
         self,
@@ -155,6 +156,20 @@ class PyInstrumentProfilerMiddleware:
             )
 
             renderer = JSONRenderer()
+            with codecs.open(prof_file_name, "w", "utf-8") as f:
+                f.write(renderer.render(session=self._profiler.last_session))
+            logger.info("Done writing profile to %r", prof_file_name)
+        elif self._output_type == "speedscope":
+            prof_file_name = self.DEFAULT_SPEEDSCOPE_FILENAME
+            if self._prof_file_name is not None:
+                prof_file_name = self._prof_file_name
+
+            logger.info(
+                "Compiling and dumping final profile to %r - this may take some time",
+                prof_file_name,
+            )
+
+            renderer = SpeedscopeRenderer()
             with codecs.open(prof_file_name, "w", "utf-8") as f:
                 f.write(renderer.render(session=self._profiler.last_session))
             logger.info("Done writing profile to %r", prof_file_name)

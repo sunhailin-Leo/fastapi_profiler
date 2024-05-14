@@ -80,3 +80,41 @@ class TestProfilerMiddleware:
         # Check if the .prof file has been created and has content
         assert full_path.exists()
         assert full_path.read_binary()
+
+    def test_profiler_export_to_json(self, test_middleware, tmpdir):
+        full_path = tmpdir / "test.json"
+
+        with TestClient(
+            test_middleware(
+                profiler_output_type="json",
+                is_print_each_request=False,
+                profiler_interval=0.0000001,
+                prof_file_name=str(full_path),
+            )
+        ) as client:
+            # request
+            request_path = "/test"
+            client.get(request_path)
+
+        # Check if the .prof file has been created and has content
+        assert full_path.exists()
+        assert full_path.read_binary()
+
+    def test_profiler_export_to_speedscope(self, test_middleware, tmpdir):
+        full_path = tmpdir / "test_speedscope.json"
+
+        with TestClient(
+            test_middleware(
+                profiler_output_type="speedscope",
+                is_print_each_request=False,
+                profiler_interval=0.0000001,
+                prof_file_name=str(full_path),
+            )
+        ) as client:
+            # request
+            request_path = "/test"
+            client.get(request_path)
+
+        # Check if the .prof file has been created and has content
+        assert full_path.exists()
+        assert full_path.read_binary()
