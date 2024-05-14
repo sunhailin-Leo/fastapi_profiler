@@ -1,5 +1,11 @@
 # ChangeLog
 
+### version 1.4.0
+  * add support for speedscope
+
+### version 1.3.0
+  * add support for json
+
 ### version 1.2.0
   * thanks to [@msnidal](https://github.com/msnidal) Implement `.prof` output
 
