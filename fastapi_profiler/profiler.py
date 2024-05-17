@@ -128,11 +128,11 @@ class PyInstrumentProfilerMiddleware:
                     output_filename=os.path.abspath(html_file_name),
                 )
             else:
-                html_code = renderer.render(session=self._profiler.last_session)
-                with codecs.open(html_file_name, "w", "utf-8") as f:
-                    f.write(html_code)
-
-            logger.info("Done writing profile to %r", html_file_name)
+                if self._profiler.last_session:
+                    html_code = renderer.render(session=self._profiler.last_session)
+                    with codecs.open(html_file_name, "w", "utf-8") as f:
+                        f.write(html_code)
+                    logger.info("Done writing profile to %r", html_file_name)
         elif self._output_type == "prof":
             prof_file_name = self.DEFAULT_PROF_FILENAME
             if self._prof_file_name is not None:
@@ -155,10 +155,11 @@ class PyInstrumentProfilerMiddleware:
                 prof_file_name,
             )
 
-            renderer = JSONRenderer()
-            with codecs.open(prof_file_name, "w", "utf-8") as f:
-                f.write(renderer.render(session=self._profiler.last_session))
-            logger.info("Done writing profile to %r", prof_file_name)
+            if self._profiler.last_session:
+                renderer = JSONRenderer()
+                with codecs.open(prof_file_name, "w", "utf-8") as f:
+                    f.write(renderer.render(session=self._profiler.last_session))
+                logger.info("Done writing profile to %r", prof_file_name)
         elif self._output_type == "speedscope":
             prof_file_name = self.DEFAULT_SPEEDSCOPE_FILENAME
             if self._prof_file_name is not None:
@@ -169,7 +170,8 @@ class PyInstrumentProfilerMiddleware:
                 prof_file_name,
             )
 
-            renderer = SpeedscopeRenderer()
-            with codecs.open(prof_file_name, "w", "utf-8") as f:
-                f.write(renderer.render(session=self._profiler.last_session))
-            logger.info("Done writing profile to %r", prof_file_name)
+            if self._profiler.last_session:
+                renderer = SpeedscopeRenderer()
+                with codecs.open(prof_file_name, "w", "utf-8") as f:
+                    f.write(renderer.render(session=self._profiler.last_session))
+                logger.info("Done writing profile to %r", prof_file_name)

@@ -1,5 +1,8 @@
 # ChangeLog
 
+### version 1.4.1
+  * fix `AttributeError`[issue#17](https://github.com/sunhailin-Leo/fastapi_profiler/issues/17)
+
 ### version 1.4.0
   * add support for speedscope
 
