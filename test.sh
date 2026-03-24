@@ -1,2 +1,14 @@
-# pytest test -s
-cd test && pytest . --cov=fastapi_profiler --cov=test && cd .. && flake8 --exclude build --max-line-length 89 --ignore=F401
+#!/usr/bin/env bash
+set -e
+
+echo "==> Lint with ruff..."
+uv run ruff check fastapi_profiler test
+
+echo "==> Lint with flake8..."
+uv run flake8 fastapi_profiler test
+
+echo "==> Type check with ty..."
+uv run ty check fastapi_profiler
+
+echo "==> Run tests..."
+uv run pytest

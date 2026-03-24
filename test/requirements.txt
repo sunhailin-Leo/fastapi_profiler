@@ -1,8 +1,0 @@
-flake8
-pytest
-pytest-cov
-fastapi
-requests
-httpx
-codecov
-coverage
