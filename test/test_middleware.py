@@ -411,6 +411,9 @@ class TestFileOutputTypes:
             return {"ok": True}
 
         with TestClient(app) as client:
+            # First request: _cprofile_stats is None → pstats.Stats() branch.
+            client.get("/test")
+            # Second request: _cprofile_stats is not None → .add() branch.
             client.get("/test")
         # cProfile accumulates stats and dumps on shutdown.
         assert full_path.exists()
@@ -669,3 +672,84 @@ class TestApplyRuntimeConfig:
         middleware = self._make_middleware()
         with pytest.raises(ValueError, match="slow_request_threshold_ms must be a non-negative"):
             middleware._apply_runtime_config({"slow_request_threshold_ms": -1.0})
+
+
+# ---------------------------------------------------------------------------
+# _write_profile_to_file error handling
+# ---------------------------------------------------------------------------
+
+class TestWriteProfileToFile:
+    """Unit-test the OSError branch in _write_profile_to_file."""
+
+    def _make_middleware(self, output_type: str = "html"):
+        from starlette.applications import Starlette
+        bare_app = Starlette()
+        return PyInstrumentProfilerMiddleware(
+            bare_app,
+            profiler_output_type=output_type,
+        )
+
+    def test_oserror_on_write_logs_error(self, caplog):
+        """Cover the except OSError branch in _write_profile_to_file."""
+        import logging
+        from unittest.mock import mock_open, patch
+
+        middleware = self._make_middleware("html")
+        with patch("builtins.open", mock_open()) as mocked_open:
+            mocked_open.side_effect = OSError("permission denied")
+            with caplog.at_level(logging.ERROR, logger="fastapi_profiler"):
+                middleware._write_profile_to_file("<html>profile</html>")
+        assert any("Failed to write profile" in record.message for record in caplog.records)
+
+    def test_write_profile_to_file_skips_when_no_file_path(self):
+        """Cover the 'if not file_path: return' branch for text output type."""
+        from unittest.mock import patch
+
+        # text output type returns "" from _resolve_output_file_name, so no file is written.
+        middleware = self._make_middleware("text")
+        with patch("builtins.open") as mocked_open:
+            middleware._write_profile_to_file("some profile text")
+            mocked_open.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# get_profiler_result branches
+# ---------------------------------------------------------------------------
+
+class TestGetProfilerResult:
+    """Unit-test the various branches in get_profiler_result."""
+
+    # Restrict anyio to asyncio only — trio is not a project dependency.
+    @pytest.fixture
+    def anyio_backend(self):
+        return "asyncio"
+
+    def _make_middleware(self, output_type: str):
+        from starlette.applications import Starlette
+        bare_app = Starlette()
+        return PyInstrumentProfilerMiddleware(
+            bare_app,
+            profiler_output_type=output_type,
+        )
+
+    @pytest.mark.anyio
+    async def test_prof_no_data_accumulated_logs_info(self, caplog):
+        """Cover the cprofile_stats is None early-return branch."""
+        import logging
+
+        middleware = self._make_middleware("prof")
+        # _cprofile_stats starts as None — no requests have been made.
+        assert middleware._cprofile_stats is None
+        with caplog.at_level(logging.INFO, logger="fastapi_profiler"):
+            await middleware.get_profiler_result()
+        assert any("no cProfile data" in record.message for record in caplog.records)
+
+    @pytest.mark.anyio
+    async def test_html_output_logs_per_request_message(self, caplog):
+        """Cover the html/json/speedscope fallthrough branch."""
+        import logging
+
+        middleware = self._make_middleware("html")
+        with caplog.at_level(logging.INFO, logger="fastapi_profiler"):
+            await middleware.get_profiler_result()
+        assert any("per-request" in record.message for record in caplog.records)

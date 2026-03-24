@@ -541,12 +541,14 @@ class PyInstrumentProfilerMiddleware:
             return
 
         if self._output_type == OUTPUT_TYPE_PROF:
+            # Fast path: check without acquiring the lock first.  If no data
+            # has been accumulated yet we can bail out immediately.
+            if self._cprofile_stats is None:
+                logger.info(
+                    "fastapi_profiler: no cProfile data accumulated yet."
+                )
+                return
             with self._cprofile_lock:
-                if self._cprofile_stats is None:
-                    logger.info(
-                        "fastapi_profiler: no cProfile data accumulated yet."
-                    )
-                    return
                 file_path = self._resolve_output_file_name()
                 logger.info("Dumping cProfile stats to %r", file_path)
                 self._cprofile_stats.dump_stats(file_path)

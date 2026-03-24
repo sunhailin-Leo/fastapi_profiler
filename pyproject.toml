@@ -126,6 +126,8 @@ environment.python-version = "3.8"
 [tool.pytest.ini_options]
 testpaths = ["test"]
 addopts = "--cov=fastapi_profiler --cov-report=term-missing"
+# Restrict anyio tests to asyncio only; trio is not a project dependency.
+anyio_backends = ["asyncio"]
 
 # ---------------------------------------------------------------------------
 # coverage
