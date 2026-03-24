@@ -2,10 +2,10 @@
 This example shows how to use max_profiles_per_route to keep a rolling
 history of the last N profile records per route in memory.
 
-The per-route history is accessible via the /stats API when the dashboard
-is enabled.  Each ProfileRecord contains the route path, HTTP method,
-duration in milliseconds, HTTP status code, and an optional profile output
-string captured at request time.
+The per-route history is stored in memory and accessible programmatically
+via ``stats_collector.get_route_history(path, method)``.  Each ProfileRecord
+contains the route path, HTTP method, duration in milliseconds, HTTP status
+code, and an optional profile output string captured at request time.
 """
 import os
 import uvicorn

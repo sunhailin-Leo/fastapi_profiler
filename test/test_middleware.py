@@ -1,4 +1,4 @@
-"""Integration tests for PyInstrumentProfilerMiddleware (v1.6.0)."""
+"""Integration tests for PyInstrumentProfilerMiddleware (v1.5.0)."""
 
 import json
 import logging
@@ -369,10 +369,8 @@ class TestServerAppWarning:
 # ---------------------------------------------------------------------------
 
 class TestFileOutputTypes:
-    def test_export_to_html(self, tmp_path, caplog):
-        """HTML output type: get_profiler_result logs a warning (no aggregated
-        session in 1.5.0+).  Verify the request succeeds and the warning is emitted."""
-        import logging
+    def test_export_to_html(self, tmp_path):
+        """HTML output type: profile is written per-request to the configured file."""
         full_path = tmp_path / "test.html"
         app = FastAPI()
         app.add_middleware(
@@ -388,12 +386,12 @@ class TestFileOutputTypes:
         async def test_route():
             return {"ok": True}
 
-        with caplog.at_level(logging.WARNING, logger="fastapi_profiler"):
-            with TestClient(app) as client:
-                response = client.get("/test")
+        with TestClient(app) as client:
+            response = client.get("/test")
         assert response.status_code == 200
-        # Shutdown handler emits a warning about no aggregated session.
-        assert any("html" in r.message for r in caplog.records)
+        # File is written per-request; it must exist after the request.
+        assert full_path.exists()
+        assert "html" in full_path.read_text().lower()
 
     def test_export_to_prof(self, tmp_path):
         """cProfile output type: get_profiler_result writes the .prof file on shutdown."""
@@ -419,8 +417,7 @@ class TestFileOutputTypes:
         assert full_path.read_bytes()
 
     def test_export_to_json(self, tmp_path):
-        """JSON output type: in 1.5.0+ each request uses its own Profiler instance.
-        get_profiler_result emits a warning; verify the request itself succeeds."""
+        """JSON output type: profile is written per-request to the configured file."""
         full_path = tmp_path / "test.json"
         app = FastAPI()
         app.add_middleware(
@@ -439,10 +436,12 @@ class TestFileOutputTypes:
         with TestClient(app) as client:
             response = client.get("/test")
         assert response.status_code == 200
+        # File is written per-request.
+        assert full_path.exists()
+        assert full_path.read_text().strip().startswith("{")
 
     def test_export_to_speedscope(self, tmp_path):
-        """Speedscope output type: same as JSON — per-request Profiler, no aggregated
-        session.  Verify the request succeeds."""
+        """Speedscope output type: profile is written per-request to the configured file."""
         full_path = tmp_path / "test_speedscope.json"
         app = FastAPI()
         app.add_middleware(
@@ -461,6 +460,9 @@ class TestFileOutputTypes:
         with TestClient(app) as client:
             response = client.get("/test")
         assert response.status_code == 200
+        # File is written per-request.
+        assert full_path.exists()
+        assert full_path.read_text().strip().startswith("{")
 
     @staticmethod
     def _capture_log(logger_name: str):
