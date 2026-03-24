@@ -1,0 +1,140 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "fastapi_profiler"
+version = "1.5.0"
+description = "A FastAPI Middleware of pyinstrument to check your service performance."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "sunhailin-Leo", email = "379978424@qq.com" }]
+keywords = ["fastapi", "pyinstrument", "profiler"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries",
+]
+requires-python = ">=3.8"
+dependencies = [
+    "fastapi",
+    "pyinstrument>=4.4.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/sunhailin-Leo/fastapi_profiler"
+Repository = "https://github.com/sunhailin-Leo/fastapi_profiler"
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "pytest-cov",
+    "requests",
+    "httpx",
+    "coverage",
+    "flake8",
+    "ruff",
+    "ty",
+]
+example = [
+    "starlette",
+    "uvicorn",
+]
+
+# ---------------------------------------------------------------------------
+# uv
+# ---------------------------------------------------------------------------
+[tool.uv]
+package = true
+
+# ---------------------------------------------------------------------------
+# hatchling build
+# ---------------------------------------------------------------------------
+[tool.hatch.build.targets.wheel]
+packages = ["fastapi_profiler"]
+
+[tool.hatch.build.targets.sdist]
+exclude = ["test", "example", ".github"]
+
+# ---------------------------------------------------------------------------
+# ruff
+# ---------------------------------------------------------------------------
+[tool.ruff]
+line-length = 89
+target-version = "py38"
+exclude = ["build", "dist", ".venv"]
+
+[tool.ruff.lint]
+# E/W: pycodestyle, F: pyflakes, I: isort, UP: pyupgrade, B: flake8-bugbear
+select = ["E", "W", "F", "I", "UP", "B"]
+ignore = [
+    "F401",  # unused imports (kept for re-exports in __init__.py)
+    "UP007", # use X | Y for union types (not available in Python 3.8)
+    "UP006", # use type instead of Type (not available in Python 3.8)
+]
+
+[tool.ruff.lint.per-file-ignores]
+# dashboard.py contains inlined HTML/CSS/JS that cannot be line-wrapped
+"fastapi_profiler/dashboard.py" = ["E501"]
+# test files allow longer lines for readability (assertions, docstrings)
+"test/*.py" = ["E501"]
+# stats.py has a few unavoidably long lines in docstrings/dicts
+"fastapi_profiler/stats.py" = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["fastapi_profiler"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+# ---------------------------------------------------------------------------
+# flake8
+# ---------------------------------------------------------------------------
+[tool.flake8]
+max-line-length = 89
+exclude = ["build", "dist", ".venv"]
+ignore = ["F401", "W503"]
+per-file-ignores = [
+    "fastapi_profiler/dashboard.py:E501",
+    "fastapi_profiler/stats.py:E501",
+    "fastapi_profiler/profiler.py:E501",
+    "test/*.py:E501",
+]
+
+# ---------------------------------------------------------------------------
+# ty (type checker)
+# ---------------------------------------------------------------------------
+[tool.ty]
+# ty configuration — https://github.com/astral-sh/ty
+environment.python-version = "3.8"
+
+[tool.ty.rules]
+
+# ---------------------------------------------------------------------------
+# pytest
+# ---------------------------------------------------------------------------
+[tool.pytest.ini_options]
+testpaths = ["test"]
+addopts = "--cov=fastapi_profiler --cov-report=term-missing"
+# Restrict anyio tests to asyncio only; trio is not a project dependency.
+anyio_backends = ["asyncio"]
+
+# ---------------------------------------------------------------------------
+# coverage
+# ---------------------------------------------------------------------------
+[tool.coverage.run]
+source = ["fastapi_profiler"]
+omit = ["*/_version.py"]
+
+[tool.coverage.report]
+show_missing = true
