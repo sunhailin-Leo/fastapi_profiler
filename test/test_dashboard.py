@@ -122,8 +122,7 @@ class TestStatsEndpoint:
     def test_stats_with_recorded_data(self):
         import asyncio
         app, collector, _ = make_dashboard_app()
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(collector.record("/api/test", "GET", 100.0, 200))
+        asyncio.run(collector.record("/api/test", "GET", 100.0, 200))
         client = TestClient(app)
         data = client.get("/__profiler__/stats").json()
         assert len(data["routes"]) == 1
@@ -145,8 +144,7 @@ class TestResetEndpoint:
     def test_reset_clears_stats(self):
         import asyncio
         app, collector, _ = make_dashboard_app()
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(collector.record("/test", "GET", 100.0, 200))
+        asyncio.run(collector.record("/test", "GET", 100.0, 200))
         client = TestClient(app)
         client.post("/__profiler__/reset")
         data = client.get("/__profiler__/stats").json()
