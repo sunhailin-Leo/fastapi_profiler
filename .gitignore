@@ -134,3 +134,4 @@ dmypy.json
 # Profiler outputs
 *.prof
 *.html
+fastapi-profiler*.json

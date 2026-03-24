@@ -3,8 +3,8 @@
 This module provides the ASGI middleware that profiles HTTP requests using
 pyinstrument (or cProfile for the 'prof' output type).
 
-New in 1.6.0 (released as 1.5.0)
----------------------------------
+New in 1.5.0
+------------
 - **Sampling rate** (``profiler_sample_rate``): profile only a fraction of
   requests (0.0–1.0).  Useful for production deployments.
 - **Error auto-capture** (``always_profile_errors``): 5xx responses are
@@ -23,7 +23,9 @@ New in 1.6.0 (released as 1.5.0)
 
 import cProfile
 import json
+import pstats
 import random
+import threading
 import time
 import warnings
 from io import StringIO
@@ -206,9 +208,13 @@ class PyInstrumentProfilerMiddleware:
             max_profiles_per_route=max_profiles_per_route
         )
 
-        # cProfile instance (only for "prof" output type).
+        # cProfile accumulator (only for "prof" output type).
+        # Per-request profiles are merged here under _cprofile_lock so that
+        # concurrent ASGI requests each use their own cProfile.Profile instance
+        # and then safely contribute to the aggregated stats for dump_stats().
         if profiler_output_type == OUTPUT_TYPE_PROF:
-            self._cprofile = cProfile.Profile()
+            self._cprofile_lock = threading.Lock()
+            self._cprofile_stats: Optional[pstats.Stats] = None
 
         # Register shutdown handler via the router (compatible with all
         # FastAPI versions including those that deprecated add_event_handler).
@@ -277,6 +283,32 @@ class PyInstrumentProfilerMiddleware:
             interval=self._profiler_interval,
             async_mode=async_mode,
         )
+
+    def _get_profile_output(self, profiler: Profiler) -> str:
+        """Return profile output string in the format matching *output_type*."""
+        if self._output_type == OUTPUT_TYPE_HTML:
+            return profiler.output_html()
+        if self._output_type in {OUTPUT_TYPE_JSON, OUTPUT_TYPE_SPEEDSCOPE}:
+            from pyinstrument.renderers import JSONRenderer, SpeedscopeRenderer
+
+            renderer = (
+                JSONRenderer()
+                if self._output_type == OUTPUT_TYPE_JSON
+                else SpeedscopeRenderer()
+            )
+            return profiler.output(renderer=renderer)
+        return profiler.output_text(**self._profiler_kwargs)
+
+    def _write_profile_to_file(self, content: str) -> None:
+        """Write *content* to the configured output file (overwriting each time)."""
+        file_path = self._resolve_output_file_name()
+        if not file_path:
+            return
+        try:
+            with open(file_path, "w") as fh:
+                fh.write(content)
+        except OSError as exc:
+            logger.error("Failed to write profile to %r: %s", file_path, exc)
 
     def _emit_request_log(
         self,
@@ -363,7 +395,11 @@ class PyInstrumentProfilerMiddleware:
             await send(message)
 
         should_sample = self._should_sample()
-        profiler = self._make_pyinstrument_profiler() if should_sample else None
+        # When always_profile_errors is True we must start the profiler for
+        # every request so that we can capture a profile even for requests
+        # that would have been skipped by the sampling decision.
+        start_profiler = should_sample or self._always_profile_errors
+        profiler = self._make_pyinstrument_profiler() if start_profiler else None
 
         begin = time.perf_counter()
         if profiler:
@@ -383,18 +419,35 @@ class PyInstrumentProfilerMiddleware:
                 self._slow_request_threshold_ms <= 0
                 or duration_ms >= self._slow_request_threshold_ms
             )
+            # Emit when: the request was sampled AND exceeds the threshold,
+            # OR when we must force-profile due to an error.
             emit_profile = profiler is not None and (
-                force_profile or exceeds_threshold
+                (should_sample and exceeds_threshold) or force_profile
             )
 
-            profile_text: Optional[str] = None
+            profile_output: Optional[str] = None
             if emit_profile and profiler is not None:
-                profile_text = profiler.output_text(**self._profiler_kwargs)
+                profile_output = self._get_profile_output(profiler)
+                # For file-based output types, write/overwrite the file now.
+                if self._output_type in {
+                    OUTPUT_TYPE_HTML,
+                    OUTPUT_TYPE_JSON,
+                    OUTPUT_TYPE_SPEEDSCOPE,
+                }:
+                    self._write_profile_to_file(profile_output)
 
             if self._log_each_request:
                 self._emit_request_log(method, path, duration_ms, status_code)
-                if emit_profile and profile_text:
-                    logger.info(profile_text)
+                if emit_profile and profile_output:
+                    # For text output, log the profile inline.  For file-based
+                    # types log the path instead to keep logs readable.
+                    if self._output_type == OUTPUT_TYPE_TEXT:
+                        logger.info(profile_output)
+                    else:
+                        logger.info(
+                            "Profile written to %r",
+                            self._resolve_output_file_name(),
+                        )
 
             # Always record stats regardless of sampling.
             await self._stats_collector.record(
@@ -402,7 +455,9 @@ class PyInstrumentProfilerMiddleware:
                 method=method,
                 duration_ms=duration_ms,
                 status_code=status_code,
-                profile_output=profile_text,
+                profile_output=profile_output
+                if self._output_type == OUTPUT_TYPE_TEXT
+                else None,
             )
 
     async def _call_with_cprofile(
@@ -422,14 +477,19 @@ class PyInstrumentProfilerMiddleware:
             await send(message)
 
         should_sample = self._should_sample()
+        # Always start a per-request profiler when always_profile_errors is set
+        # so that 5xx responses can be captured even when sampling says no.
+        start_profiler = should_sample or self._always_profile_errors
+        per_request_profile = cProfile.Profile() if start_profiler else None
+
         begin = time.perf_counter()
-        if should_sample:
-            self._cprofile.enable()
+        if per_request_profile:
+            per_request_profile.enable()
         try:
             await self.app(scope, receive, wrapped_send)
         finally:
-            if should_sample:
-                self._cprofile.disable()
+            if per_request_profile:
+                per_request_profile.disable()
             duration_ms = (time.perf_counter() - begin) * 1000
 
             is_error = status_code >= 500
@@ -438,15 +498,27 @@ class PyInstrumentProfilerMiddleware:
                 self._slow_request_threshold_ms <= 0
                 or duration_ms >= self._slow_request_threshold_ms
             )
-            emit_profile = should_sample and (force_profile or exceeds_threshold)
+            emit_profile = per_request_profile is not None and (
+                (should_sample and exceeds_threshold) or force_profile
+            )
 
             if self._log_each_request:
                 self._emit_request_log(method, path, duration_ms, status_code)
-                if emit_profile:
-                    import pstats
+                if emit_profile and per_request_profile is not None:
                     stats_buffer = StringIO()
-                    pstats.Stats(self._cprofile, stream=stats_buffer).print_stats()
+                    pstats.Stats(
+                        per_request_profile, stream=stats_buffer
+                    ).print_stats()
                     logger.info(stats_buffer.getvalue())
+
+            # Merge per-request stats into the shared accumulator under a lock
+            # so concurrent ASGI requests don't corrupt each other's data.
+            if per_request_profile is not None:
+                with self._cprofile_lock:
+                    if self._cprofile_stats is None:
+                        self._cprofile_stats = pstats.Stats(per_request_profile)
+                    else:
+                        self._cprofile_stats.add(per_request_profile)
 
             await self._stats_collector.record(
                 path=path,
@@ -469,15 +541,22 @@ class PyInstrumentProfilerMiddleware:
             return
 
         if self._output_type == OUTPUT_TYPE_PROF:
-            file_path = self._resolve_output_file_name()
-            logger.info("Dumping cProfile stats to %r", file_path)
-            self._cprofile.dump_stats(file_path)
+            with self._cprofile_lock:
+                if self._cprofile_stats is None:
+                    logger.info(
+                        "fastapi_profiler: no cProfile data accumulated yet."
+                    )
+                    return
+                file_path = self._resolve_output_file_name()
+                logger.info("Dumping cProfile stats to %r", file_path)
+                self._cprofile_stats.dump_stats(file_path)
             logger.info("Done writing profile to %r", file_path)
             return
 
-        logger.warning(
-            "get_profiler_result() for output_type=%r: in 1.5.0+ each request "
-            "uses its own Profiler instance.  No aggregated session is available. "
-            "Use is_print_each_request=True or collect sessions via the stats API.",
+        # html / json / speedscope: profiles are written per-request so there
+        # is nothing to flush on shutdown.
+        logger.info(
+            "fastapi_profiler: %r profiles are written per-request to %r.",
             self._output_type,
+            self._resolve_output_file_name(),
         )

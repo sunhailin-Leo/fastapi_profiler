@@ -103,15 +103,22 @@ app.add_middleware(PyInstrumentProfilerMiddleware)
 
 ### Output to HTML file
 
+Each sampled request that exceeds the slow-request threshold writes (or
+overwrites) the configured HTML file with the latest call-tree profile:
+
 ```python
 app.add_middleware(
     PyInstrumentProfilerMiddleware,
     server_app=app,
     profiler_output_type="html",
     is_print_each_request=False,
-    html_file_name="profile_results.html",
+    html_file_name="./fastapi-profiler.html",
 )
 ```
+
+> **Note:** The file is updated on every qualifying request; it always
+> contains the **most recent** profile.  Use `profiler_output_type="text"`
+> with `is_print_each_request=True` if you want a log entry per request.
 
 ### Sampling rate — profile only 10% of requests
 
