@@ -205,3 +205,53 @@ class TestConfigEndpoint:
             headers={"content-type": "application/json"},
         )
         assert response.status_code == 400
+
+    def test_config_enabled_non_bool_returns_400(self):
+        app, _, _ = make_dashboard_app()
+        client = TestClient(app)
+        response = client.post(
+            "/__profiler__/config",
+            json={"enabled": "false"},
+        )
+        assert response.status_code == 400
+        assert "boolean" in response.json()["error"]
+
+    def test_config_sample_rate_non_numeric_returns_400(self):
+        app, _, _ = make_dashboard_app()
+        client = TestClient(app)
+        response = client.post(
+            "/__profiler__/config",
+            json={"sample_rate": "not-a-number"},
+        )
+        assert response.status_code == 400
+        assert "sample_rate" in response.json()["error"]
+
+    def test_config_sample_rate_out_of_range_returns_400(self):
+        app, _, _ = make_dashboard_app()
+        client = TestClient(app)
+        response = client.post(
+            "/__profiler__/config",
+            json={"sample_rate": 1.5},
+        )
+        assert response.status_code == 400
+        assert "sample_rate" in response.json()["error"]
+
+    def test_config_slow_threshold_non_numeric_returns_400(self):
+        app, _, _ = make_dashboard_app()
+        client = TestClient(app)
+        response = client.post(
+            "/__profiler__/config",
+            json={"slow_request_threshold_ms": "bad"},
+        )
+        assert response.status_code == 400
+        assert "slow_request_threshold_ms" in response.json()["error"]
+
+    def test_config_slow_threshold_negative_returns_400(self):
+        app, _, _ = make_dashboard_app()
+        client = TestClient(app)
+        response = client.post(
+            "/__profiler__/config",
+            json={"slow_request_threshold_ms": -1.0},
+        )
+        assert response.status_code == 400
+        assert "slow_request_threshold_ms" in response.json()["error"]

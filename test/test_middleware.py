@@ -644,3 +644,26 @@ class TestResolveOutputFileName:
         """Cover line 309: text output type returns empty string."""
         middleware = self._make_middleware("text")
         assert middleware._resolve_output_file_name() == ""
+
+
+# ---------------------------------------------------------------------------
+# _apply_runtime_config validation
+# ---------------------------------------------------------------------------
+
+class TestApplyRuntimeConfig:
+    """Unit-test the ValueError branches in _apply_runtime_config."""
+
+    def _make_middleware(self):
+        from starlette.applications import Starlette
+        bare_app = Starlette()
+        return PyInstrumentProfilerMiddleware(bare_app)
+
+    def test_sample_rate_out_of_range_raises_value_error(self):
+        middleware = self._make_middleware()
+        with pytest.raises(ValueError, match="sample_rate must be between"):
+            middleware._apply_runtime_config({"sample_rate": 1.5})
+
+    def test_slow_threshold_negative_raises_value_error(self):
+        middleware = self._make_middleware()
+        with pytest.raises(ValueError, match="slow_request_threshold_ms must be a non-negative"):
+            middleware._apply_runtime_config({"slow_request_threshold_ms": -1.0})

@@ -128,6 +128,9 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
+# IDE project files
+.idea/
+
 # Profiler outputs
 *.prof
 *.html

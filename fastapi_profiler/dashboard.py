@@ -148,15 +148,40 @@ def create_dashboard_router(
             return JSONResponse({"error": "invalid JSON body"}, status_code=400)
 
         if "enabled" in data:
-            set_enabled(bool(data["enabled"]))
+            enabled_value = data["enabled"]
+            if not isinstance(enabled_value, bool):
+                return JSONResponse({"error": "enabled must be a boolean"}, status_code=400)
+            set_enabled(enabled_value)
 
         config_patch: dict = {}
         if "sample_rate" in data:
-            config_patch["sample_rate"] = float(data["sample_rate"])
+            try:
+                sample_rate = float(data["sample_rate"])
+            except (TypeError, ValueError):
+                return JSONResponse(
+                    {"error": "sample_rate must be a number between 0.0 and 1.0"},
+                    status_code=400,
+                )
+            if not 0.0 <= sample_rate <= 1.0:
+                return JSONResponse(
+                    {"error": "sample_rate must be a number between 0.0 and 1.0"},
+                    status_code=400,
+                )
+            config_patch["sample_rate"] = sample_rate
         if "slow_request_threshold_ms" in data:
-            config_patch["slow_request_threshold_ms"] = float(
-                data["slow_request_threshold_ms"]
-            )
+            try:
+                slow_threshold = float(data["slow_request_threshold_ms"])
+            except (TypeError, ValueError):
+                return JSONResponse(
+                    {"error": "slow_request_threshold_ms must be a non-negative number"},
+                    status_code=400,
+                )
+            if slow_threshold < 0.0:
+                return JSONResponse(
+                    {"error": "slow_request_threshold_ms must be a non-negative number"},
+                    status_code=400,
+                )
+            config_patch["slow_request_threshold_ms"] = slow_threshold
         if config_patch:
             set_config(config_patch)
 

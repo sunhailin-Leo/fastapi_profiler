@@ -75,8 +75,8 @@ All parameters are passed as keyword arguments to `add_middleware()`.
 | `is_print_each_request` | `bool` | `True` | Print/log the profile summary after every request. |
 | `profiler_interval` | `float` | `0.0001` | pyinstrument sampling interval in seconds. |
 | `async_mode` | `str` | `"enabled"` | pyinstrument async mode. |
-| `html_file_name` | `str \| None` | `"profile_results.html"` | Output file name for `html` type. |
-| `prof_file_name` | `str \| None` | `"profile_results.prof"` | Output file name for `prof`, `json`, and `speedscope` types. |
+| `html_file_name` | `str \| None` | `"./fastapi-profiler.html"` | Output file name for `html` type. |
+| `prof_file_name` | `str \| None` | `"./fastapi-profiler.prof"` | Output file name for `prof`, `json`, and `speedscope` types. |
 | `open_in_browser` | `bool` | `False` | Automatically open the HTML report in a browser on shutdown. |
 | `filter_paths` | `list[str] \| None` | `None` | List of URL path prefixes to skip profiling entirely (e.g. `["/health", "/metrics"]`). |
 
@@ -193,10 +193,10 @@ After starting the server, open `http://localhost:8080/__profiler__` in your bro
       "method": "GET",
       "count": 42,
       "error_count": 1,
-      "avg_ms": 3.14,
-      "p95_ms": 8.20,
-      "p99_ms": 12.50,
-      "max_ms": 15.00
+      "avg_duration_ms": 3.14,
+      "p95_duration_ms": 8.20,
+      "p99_duration_ms": 12.50,
+      "max_duration_ms": 15.00
     }
   ]
 }

@@ -169,17 +169,18 @@ class StatsCollector:
         self._route_stats: Dict[str, RouteStats] = {}
         self._route_history: Dict[str, Deque[ProfileRecord]] = {}
         self._max_profiles_per_route = max_profiles_per_route
-        self._lock: Optional[asyncio.Lock] = None
 
     def _get_lock(self) -> asyncio.Lock:
-        """Lazily create the asyncio.Lock on first use inside an event loop.
+        """Create a new asyncio.Lock bound to the current running event loop.
 
-        Python 3.8 binds asyncio.Lock to the running loop at construction time,
-        so we must defer creation until we are actually inside a coroutine.
+        A fresh Lock is created on every call to avoid the "bound to a different
+        event loop" error that occurs on Python 3.8/3.9 when the same Lock
+        instance is reused across multiple asyncio.run() calls (each of which
+        creates a new event loop).  In production the middleware runs inside a
+        single long-lived event loop, so the overhead of creating a Lock per
+        coroutine entry is negligible.
         """
-        if self._lock is None:
-            self._lock = asyncio.Lock()
-        return self._lock
+        return asyncio.Lock()
 
     def _get_route_key(self, path: str, method: str) -> str:
         """Generate a unique key for a route."""

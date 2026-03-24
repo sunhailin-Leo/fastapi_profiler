@@ -20,7 +20,7 @@
   * New public exports: `StatsCollector`, `ProfileRecord`, `RouteStats`.
   * New test modules: `test/test_stats.py`, `test/test_dashboard.py`.
 
-### version 1.5.0 (previous)
+### version 1.4.2
   * **Concurrency-safe profiling**: each HTTP request now uses its own
     `Profiler` instance, eliminating session contamination under concurrent
     load.

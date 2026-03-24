@@ -3,8 +3,8 @@
 This module provides the ASGI middleware that profiles HTTP requests using
 pyinstrument (or cProfile for the 'prof' output type).
 
-New in 1.6.0
-------------
+New in 1.6.0 (released as 1.5.0)
+---------------------------------
 - **Sampling rate** (``profiler_sample_rate``): profile only a fraction of
   requests (0.0–1.0).  Useful for production deployments.
 - **Error auto-capture** (``always_profile_errors``): 5xx responses are
@@ -241,11 +241,17 @@ class PyInstrumentProfilerMiddleware:
 
     def _apply_runtime_config(self, config: dict) -> None:
         if "sample_rate" in config:
-            self._sample_rate = float(config["sample_rate"])
+            sample_rate = float(config["sample_rate"])
+            if not 0.0 <= sample_rate <= 1.0:
+                raise ValueError("sample_rate must be between 0.0 and 1.0")
+            self._sample_rate = sample_rate
         if "slow_request_threshold_ms" in config:
-            self._slow_request_threshold_ms = float(
-                config["slow_request_threshold_ms"]
-            )
+            slow_request_threshold_ms = float(config["slow_request_threshold_ms"])
+            if slow_request_threshold_ms < 0.0:
+                raise ValueError(
+                    "slow_request_threshold_ms must be a non-negative number"
+                )
+            self._slow_request_threshold_ms = slow_request_threshold_ms
 
     # ------------------------------------------------------------------
     # Internal helpers

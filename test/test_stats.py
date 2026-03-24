@@ -163,29 +163,41 @@ class TestStatsCollector:
         return StatsCollector(max_profiles_per_route=5)
 
     def test_record_and_get_all_stats(self, collector):
-        asyncio.run(collector.record("/test", "GET", 100.0, 200))
-        stats = asyncio.run(collector.get_all_stats())
+        async def _run():
+            await collector.record("/test", "GET", 100.0, 200)
+            return await collector.get_all_stats()
+
+        stats = asyncio.run(_run())
         assert len(stats) == 1
         assert stats[0]["path"] == "/test"
         assert stats[0]["count"] == 1
 
     def test_multiple_routes(self, collector):
-        asyncio.run(collector.record("/a", "GET", 50.0, 200))
-        asyncio.run(collector.record("/b", "POST", 200.0, 201))
-        stats = asyncio.run(collector.get_all_stats())
+        async def _run():
+            await collector.record("/a", "GET", 50.0, 200)
+            await collector.record("/b", "POST", 200.0, 201)
+            return await collector.get_all_stats()
+
+        stats = asyncio.run(_run())
         assert len(stats) == 2
 
     def test_stats_sorted_by_avg_duration_descending(self, collector):
-        asyncio.run(collector.record("/fast", "GET", 10.0, 200))
-        asyncio.run(collector.record("/slow", "GET", 500.0, 200))
-        stats = asyncio.run(collector.get_all_stats())
+        async def _run():
+            await collector.record("/fast", "GET", 10.0, 200)
+            await collector.record("/slow", "GET", 500.0, 200)
+            return await collector.get_all_stats()
+
+        stats = asyncio.run(_run())
         assert stats[0]["path"] == "/slow"
         assert stats[1]["path"] == "/fast"
 
     def test_reset_clears_all(self, collector):
-        asyncio.run(collector.record("/test", "GET", 100.0, 200))
-        asyncio.run(collector.reset())
-        stats = asyncio.run(collector.get_all_stats())
+        async def _run():
+            await collector.record("/test", "GET", 100.0, 200)
+            await collector.reset()
+            return await collector.get_all_stats()
+
+        stats = asyncio.run(_run())
         assert stats == []
 
     def test_get_route_history_empty(self, collector):
@@ -193,41 +205,59 @@ class TestStatsCollector:
         assert history == []
 
     def test_get_route_history_returns_records(self, collector):
-        asyncio.run(collector.record("/test", "GET", 100.0, 200, "profile text"))
-        history = asyncio.run(collector.get_route_history("/test", "GET"))
+        async def _run():
+            await collector.record("/test", "GET", 100.0, 200, "profile text")
+            return await collector.get_route_history("/test", "GET")
+
+        history = asyncio.run(_run())
         assert len(history) == 1
         assert history[0].path == "/test"
         assert history[0].profile_output == "profile text"
 
     def test_get_route_history_most_recent_first(self, collector):
-        asyncio.run(collector.record("/test", "GET", 10.0, 200))
-        asyncio.run(collector.record("/test", "GET", 20.0, 200))
-        asyncio.run(collector.record("/test", "GET", 30.0, 200))
-        history = asyncio.run(collector.get_route_history("/test", "GET"))
+        async def _run():
+            await collector.record("/test", "GET", 10.0, 200)
+            await collector.record("/test", "GET", 20.0, 200)
+            await collector.record("/test", "GET", 30.0, 200)
+            return await collector.get_route_history("/test", "GET")
+
+        history = asyncio.run(_run())
         assert history[0].duration_ms == 30.0
         assert history[1].duration_ms == 20.0
 
     def test_get_route_history_respects_limit(self, collector):
-        for i in range(5):
-            asyncio.run(collector.record("/test", "GET", float(i), 200))
-        history = asyncio.run(collector.get_route_history("/test", "GET", limit=2))
+        async def _run():
+            for i in range(5):
+                await collector.record("/test", "GET", float(i), 200)
+            return await collector.get_route_history("/test", "GET", limit=2)
+
+        history = asyncio.run(_run())
         assert len(history) == 2
 
     def test_max_profiles_per_route_enforced(self):
-        collector = StatsCollector(max_profiles_per_route=3)
-        for i in range(10):
-            asyncio.run(collector.record("/test", "GET", float(i), 200))
-        history = asyncio.run(collector.get_route_history("/test", "GET", limit=100))
+        async def _run():
+            bounded_collector = StatsCollector(max_profiles_per_route=3)
+            for i in range(10):
+                await bounded_collector.record("/test", "GET", float(i), 200)
+            return await bounded_collector.get_route_history("/test", "GET", limit=100)
+
+        history = asyncio.run(_run())
         assert len(history) == 3
 
     def test_record_with_profile_output(self, collector):
-        asyncio.run(collector.record("/test", "GET", 50.0, 200, profile_output="output"))
-        history = asyncio.run(collector.get_route_history("/test", "GET"))
+        async def _run():
+            await collector.record("/test", "GET", 50.0, 200, profile_output="output")
+            return await collector.get_route_history("/test", "GET")
+
+        history = asyncio.run(_run())
         assert history[0].profile_output == "output"
 
     def test_error_requests_counted(self, collector):
-        asyncio.run(collector.record("/test", "GET", 10.0, 500))
-        asyncio.run(collector.record("/test", "GET", 10.0, 200))
-        stats = asyncio.run(collector.get_all_stats())
+        async def _run():
+            await collector.record("/test", "GET", 10.0, 500)
+            await collector.record("/test", "GET", 10.0, 200)
+            return await collector.get_all_stats()
+
+        stats = asyncio.run(_run())
         assert stats[0]["error_count"] == 1
         assert stats[0]["count"] == 2
