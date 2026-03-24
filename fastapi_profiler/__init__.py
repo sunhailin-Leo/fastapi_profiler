@@ -1,6 +1,6 @@
-from ._version import __version__, __author__
+from ._version import __author__, __version__
 from .profiler import PyInstrumentProfilerMiddleware
-from .stats import StatsCollector, ProfileRecord, RouteStats
+from .stats import ProfileRecord, RouteStats, StatsCollector
 
 __all__ = [
     "__version__",

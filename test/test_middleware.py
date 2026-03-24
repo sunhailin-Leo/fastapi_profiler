@@ -3,19 +3,19 @@
 import json
 import logging
 import warnings
-import pytest
 from unittest.mock import patch
 
+import pytest
 from fastapi import FastAPI
-from fastapi.testclient import TestClient
 from fastapi.responses import JSONResponse
+from fastapi.testclient import TestClient
 
 from fastapi_profiler import PyInstrumentProfilerMiddleware
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_app(**profiler_kwargs) -> FastAPI:
     """Create a minimal FastAPI app with the profiler middleware attached."""
@@ -329,7 +329,6 @@ class TestServerAppWarning:
         async def probe():
             return {}
 
-        caught = []
         with warnings.catch_warnings(record=True) as caught_ctx:
             warnings.simplefilter("always")
             try:

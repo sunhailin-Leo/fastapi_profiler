@@ -1,0 +1,9 @@
+[flake8]
+max-line-length = 89
+exclude = build,dist,.venv
+ignore = F401,W503
+per-file-ignores =
+    fastapi_profiler/dashboard.py:E501
+    fastapi_profiler/stats.py:E501
+    fastapi_profiler/profiler.py:E501
+    test/*.py:E501

@@ -1,17 +1,15 @@
 """Unit tests for fastapi_profiler.dashboard module."""
 
-import json
-import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from fastapi_profiler.stats import StatsCollector
 from fastapi_profiler.dashboard import create_dashboard_router
-
+from fastapi_profiler.stats import StatsCollector
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_dashboard_app(
     sample_rate: float = 1.0,

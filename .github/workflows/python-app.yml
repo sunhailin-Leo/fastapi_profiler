@@ -23,17 +23,8 @@ jobs:
     - name: Install dependencies
       run: uv sync --group dev
 
-    - name: Lint with ruff
-      run: uv run ruff check fastapi_profiler test
-
-    - name: Lint with flake8
-      run: uv run flake8 fastapi_profiler test
-
-    - name: Type check with ty
-      run: uv run ty check fastapi_profiler
-
-    - name: Run unit tests
-      run: uv run pytest
+    - name: Lint, type check and test
+      run: make check
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4

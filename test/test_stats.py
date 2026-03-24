@@ -1,14 +1,15 @@
 """Unit tests for fastapi_profiler.stats module."""
 
 import asyncio
+
 import pytest
 
 from fastapi_profiler.stats import ProfileRecord, RouteStats, StatsCollector
 
-
 # ---------------------------------------------------------------------------
 # ProfileRecord
 # ---------------------------------------------------------------------------
+
 
 class TestProfileRecord:
     def test_create_generates_request_id(self):

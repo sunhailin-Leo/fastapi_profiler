@@ -4,12 +4,11 @@ Provides a lightweight Starlette Router that can be mounted on the host
 application to expose profiling statistics and runtime configuration.
 """
 
-import json
 from typing import Callable
 
-from starlette.routing import Router, Route
 from starlette.requests import Request
-from starlette.responses import JSONResponse, HTMLResponse
+from starlette.responses import HTMLResponse, JSONResponse
+from starlette.routing import Route, Router
 
 _DASHBOARD_HTML = """<!DOCTYPE html>
 <html lang="en">

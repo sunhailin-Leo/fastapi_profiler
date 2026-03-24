@@ -9,15 +9,15 @@ import asyncio
 import uuid
 from collections import deque
 from dataclasses import dataclass, field
-from datetime import datetime
-from typing import Dict, Deque, List, Optional
+from datetime import datetime, timezone
+from typing import Deque, Dict, List, Optional
 
 
 @dataclass
 class ProfileRecord:
     """
     Represents a single request profile record.
-    
+
     Attributes:
         request_id: Unique identifier for the request (UUID4)
         path: Request path
@@ -34,7 +34,7 @@ class ProfileRecord:
     duration_ms: float
     timestamp: str
     profile_output: Optional[str] = None
-    
+
     @classmethod
     def create(
         cls,
@@ -51,7 +51,7 @@ class ProfileRecord:
             method=method,
             status_code=status_code,
             duration_ms=duration_ms,
-            timestamp=datetime.utcnow().isoformat(),
+            timestamp=datetime.now(timezone.utc).isoformat(),
             profile_output=profile_output
         )
 
@@ -60,7 +60,7 @@ class ProfileRecord:
 class RouteStats:
     """
     Statistics for a specific route.
-    
+
     Attributes:
         path: Request path
         method: HTTP method
@@ -79,62 +79,62 @@ class RouteStats:
     max_duration_ms: float = 0.0
     min_duration_ms: float = float('inf')
     _samples: Deque[float] = field(default_factory=lambda: deque(maxlen=1000))
-    
+
     @property
     def avg_duration_ms(self) -> float:
         """Average duration in milliseconds."""
         return self.total_duration_ms / self.count if self.count > 0 else 0.0
-    
+
     @property
     def p95_duration_ms(self) -> float:
         """
         95th percentile duration in milliseconds.
-        
+
         Returns max_duration_ms if insufficient samples.
         """
         if len(self._samples) < 2:
             return self.max_duration_ms
-        
+
         sorted_samples = sorted(self._samples)
         index = int(len(sorted_samples) * 0.95)
         return sorted_samples[min(index, len(sorted_samples) - 1)]
-    
+
     @property
     def p99_duration_ms(self) -> float:
         """
         99th percentile duration in milliseconds.
-        
+
         Returns max_duration_ms if insufficient samples.
         """
         if len(self._samples) < 2:
             return self.max_duration_ms
-        
+
         sorted_samples = sorted(self._samples)
         index = int(len(sorted_samples) * 0.99)
         return sorted_samples[min(index, len(sorted_samples) - 1)]
-    
+
     def record(self, duration_ms: float, status_code: int) -> None:
         """
         Record a new request for this route.
-        
+
         Args:
             duration_ms: Request duration in milliseconds
             status_code: HTTP status code
         """
         self.count += 1
         self.total_duration_ms += duration_ms
-        
+
         if status_code >= 400:
             self.error_count += 1
-        
+
         self.max_duration_ms = max(self.max_duration_ms, duration_ms)
         self.min_duration_ms = min(self.min_duration_ms, duration_ms)
         self._samples.append(duration_ms)
-    
+
     def to_dict(self) -> Dict:
         """
         Convert to serializable dictionary (excludes _samples).
-        
+
         Returns:
             Dictionary representation of the stats
         """
@@ -155,14 +155,14 @@ class RouteStats:
 class StatsCollector:
     """
     Collector for route statistics and profile history.
-    
+
     Thread-safe statistics collection using asyncio.Lock.
     """
-    
+
     def __init__(self, max_profiles_per_route: int = 10):
         """
         Initialize the StatsCollector.
-        
+
         Args:
             max_profiles_per_route: Maximum number of profile records to keep per route
         """
@@ -170,11 +170,11 @@ class StatsCollector:
         self._route_history: Dict[str, Deque[ProfileRecord]] = {}
         self._max_profiles_per_route = max_profiles_per_route
         self._lock = asyncio.Lock()
-    
+
     def _get_route_key(self, path: str, method: str) -> str:
         """Generate a unique key for a route."""
         return f"{method}:{path}"
-    
+
     async def record(
         self,
         path: str,
@@ -185,7 +185,7 @@ class StatsCollector:
     ) -> None:
         """
         Record a request with its performance metrics.
-        
+
         Args:
             path: Request path
             method: HTTP method
@@ -194,17 +194,17 @@ class StatsCollector:
             profile_output: Optional profiling output
         """
         route_key = self._get_route_key(path, method)
-        
+
         async with self._lock:
             # Update route statistics
             if route_key not in self._route_stats:
                 self._route_stats[route_key] = RouteStats(path=path, method=method)
             self._route_stats[route_key].record(duration_ms, status_code)
-            
+
             # Store profile record in history
             if route_key not in self._route_history:
                 self._route_history[route_key] = deque(maxlen=self._max_profiles_per_route)
-            
+
             profile_record = ProfileRecord.create(
                 path=path,
                 method=method,
@@ -213,11 +213,11 @@ class StatsCollector:
                 profile_output=profile_output
             )
             self._route_history[route_key].append(profile_record)
-    
+
     async def get_all_stats(self) -> List[Dict]:
         """
         Get statistics for all routes, sorted by average duration descending.
-        
+
         Returns:
             List of dictionaries containing route statistics
         """
@@ -226,13 +226,13 @@ class StatsCollector:
             # Sort by avg_duration_ms descending
             stats_list.sort(key=lambda x: x['avg_duration_ms'], reverse=True)
             return stats_list
-    
+
     async def reset(self) -> None:
         """Clear all statistics and history."""
         async with self._lock:
             self._route_stats.clear()
             self._route_history.clear()
-    
+
     async def get_route_history(
         self,
         path: str,
@@ -241,21 +241,21 @@ class StatsCollector:
     ) -> List[ProfileRecord]:
         """
         Get recent profile records for a specific route.
-        
+
         Args:
             path: Request path
             method: HTTP method
             limit: Maximum number of records to return
-            
+
         Returns:
             List of ProfileRecord objects, most recent first
         """
         route_key = self._get_route_key(path, method)
-        
+
         async with self._lock:
             if route_key not in self._route_history:
                 return []
-            
+
             history = list(self._route_history[route_key])
             history.reverse()  # Most recent first
             return history[:limit]

@@ -21,26 +21,21 @@ New in 1.6.0
   restarting the server.
 """
 
-import json
-import os
-import codecs
 import cProfile
+import json
 import random
 import time
 import warnings
 from io import StringIO
-from typing import List, Optional
 from logging import getLogger
+from typing import List, Literal, Optional, cast
 
 from pyinstrument import Profiler
-from pyinstrument.renderers import HTMLRenderer, JSONRenderer, SpeedscopeRenderer
-
-from starlette.routing import Router, Mount
 from starlette.requests import Request
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-from fastapi_profiler.stats import StatsCollector
 from fastapi_profiler.dashboard import create_dashboard_router
+from fastapi_profiler.stats import StatsCollector
 
 logger = getLogger("fastapi_profiler")
 
@@ -268,9 +263,13 @@ class PyInstrumentProfilerMiddleware:
         return random.random() < self._sample_rate
 
     def _make_pyinstrument_profiler(self) -> Profiler:
+        async_mode = cast(
+            Literal["enabled", "disabled", "strict"],
+            self._async_mode,
+        )
         return Profiler(
             interval=self._profiler_interval,
-            async_mode=self._async_mode,
+            async_mode=async_mode,
         )
 
     def _emit_request_log(
@@ -383,7 +382,7 @@ class PyInstrumentProfilerMiddleware:
             )
 
             profile_text: Optional[str] = None
-            if emit_profile:
+            if emit_profile and profiler is not None:
                 profile_text = profiler.output_text(**self._profiler_kwargs)
 
             if self._log_each_request:

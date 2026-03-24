@@ -82,6 +82,14 @@ ignore = [
     "UP006", # use type instead of Type (not available in Python 3.8)
 ]
 
+[tool.ruff.lint.per-file-ignores]
+# dashboard.py contains inlined HTML/CSS/JS that cannot be line-wrapped
+"fastapi_profiler/dashboard.py" = ["E501"]
+# test files allow longer lines for readability (assertions, docstrings)
+"test/*.py" = ["E501"]
+# stats.py has a few unavoidably long lines in docstrings/dicts
+"fastapi_profiler/stats.py" = ["E501"]
+
 [tool.ruff.lint.isort]
 known-first-party = ["fastapi_profiler"]
 
@@ -95,7 +103,13 @@ indent-style = "space"
 [tool.flake8]
 max-line-length = 89
 exclude = ["build", "dist", ".venv"]
-ignore = ["F401"]
+ignore = ["F401", "W503"]
+per-file-ignores = [
+    "fastapi_profiler/dashboard.py:E501",
+    "fastapi_profiler/stats.py:E501",
+    "fastapi_profiler/profiler.py:E501",
+    "test/*.py:E501",
+]
 
 # ---------------------------------------------------------------------------
 # ty (type checker)
@@ -105,9 +119,6 @@ ignore = ["F401"]
 environment.python-version = "3.8"
 
 [tool.ty.rules]
-# Treat missing stubs as warnings rather than errors for third-party libs
-# that don't ship type information yet.
-missing-module-source = "warn"
 
 # ---------------------------------------------------------------------------
 # pytest
