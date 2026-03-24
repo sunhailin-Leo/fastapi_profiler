@@ -169,7 +169,17 @@ class StatsCollector:
         self._route_stats: Dict[str, RouteStats] = {}
         self._route_history: Dict[str, Deque[ProfileRecord]] = {}
         self._max_profiles_per_route = max_profiles_per_route
-        self._lock = asyncio.Lock()
+        self._lock: Optional[asyncio.Lock] = None
+
+    def _get_lock(self) -> asyncio.Lock:
+        """Lazily create the asyncio.Lock on first use inside an event loop.
+
+        Python 3.8 binds asyncio.Lock to the running loop at construction time,
+        so we must defer creation until we are actually inside a coroutine.
+        """
+        if self._lock is None:
+            self._lock = asyncio.Lock()
+        return self._lock
 
     def _get_route_key(self, path: str, method: str) -> str:
         """Generate a unique key for a route."""
@@ -195,7 +205,7 @@ class StatsCollector:
         """
         route_key = self._get_route_key(path, method)
 
-        async with self._lock:
+        async with self._get_lock():
             # Update route statistics
             if route_key not in self._route_stats:
                 self._route_stats[route_key] = RouteStats(path=path, method=method)
@@ -221,7 +231,7 @@ class StatsCollector:
         Returns:
             List of dictionaries containing route statistics
         """
-        async with self._lock:
+        async with self._get_lock():
             stats_list = [stats.to_dict() for stats in self._route_stats.values()]
             # Sort by avg_duration_ms descending
             stats_list.sort(key=lambda x: x['avg_duration_ms'], reverse=True)
@@ -229,7 +239,7 @@ class StatsCollector:
 
     async def reset(self) -> None:
         """Clear all statistics and history."""
-        async with self._lock:
+        async with self._get_lock():
             self._route_stats.clear()
             self._route_history.clear()
 
@@ -252,7 +262,7 @@ class StatsCollector:
         """
         route_key = self._get_route_key(path, method)
 
-        async with self._lock:
+        async with self._get_lock():
             if route_key not in self._route_history:
                 return []
 
