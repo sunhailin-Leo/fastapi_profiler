@@ -688,6 +688,10 @@ class TestDashboardExceptionMapping:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.skipif(
+    IS_WINDOWS,
+    reason="memray is not supported on Windows; import always fails natively",
+)
 class TestMemrayImportFailureBranch:
     def test_import_failure_sets_flags(self, tmp_path):
         """Spawn a subprocess where ``import memray`` is forced to fail."""
