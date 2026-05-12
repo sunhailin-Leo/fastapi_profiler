@@ -6,8 +6,8 @@ Setting sample_rate=0.1 means only ~10% of requests will be profiled,
 which reduces overhead in high-traffic production environments.
 """
 import os
-import uvicorn
 
+import uvicorn
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 

@@ -12,8 +12,8 @@ Example log output:
 """
 import logging
 import os
-import uvicorn
 
+import uvicorn
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 

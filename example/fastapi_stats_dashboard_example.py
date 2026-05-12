@@ -12,8 +12,8 @@ The dashboard shows per-route statistics including request count,
 error count, average / p95 / p99 / max duration in milliseconds.
 """
 import os
-import uvicorn
 
+import uvicorn
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
@@ -23,10 +23,10 @@ app = FastAPI()
 app.add_middleware(
     PyInstrumentProfilerMiddleware,
     server_app=app,
-    enable_dashboard=True,          # Mount the built-in Web UI Dashboard
-    dashboard_path="/__profiler__", # URL prefix for the dashboard (default)
+    enable_dashboard=True,           # Mount the built-in Web UI Dashboard
+    dashboard_path="/__profiler__",  # URL prefix for the dashboard (default)
     is_print_each_request=True,
-    filter_paths=["/__profiler__"], # Exclude dashboard requests from stats
+    filter_paths=["/__profiler__"],  # Exclude dashboard requests from stats
 )
 
 

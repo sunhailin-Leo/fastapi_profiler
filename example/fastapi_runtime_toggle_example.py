@@ -25,8 +25,8 @@ Try the following after starting the server:
        -d '{"slow_request_threshold_ms": 200}'
 """
 import os
-import uvicorn
 
+import uvicorn
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 

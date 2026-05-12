@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "fastapi_profiler"
-version = "1.5.0"
+version = "1.6.0"
 description = "A FastAPI Middleware of pyinstrument to check your service performance."
 readme = "README.md"
 license = { text = "MIT" }
@@ -30,6 +30,9 @@ dependencies = [
     "pyinstrument>=4.4.0",
 ]
 
+[project.optional-dependencies]
+memray = ["memray>=1.10.0; sys_platform != 'win32'"]
+
 [project.urls]
 Homepage = "https://github.com/sunhailin-Leo/fastapi_profiler"
 Repository = "https://github.com/sunhailin-Leo/fastapi_profiler"
@@ -44,6 +47,11 @@ dev = [
     "flake8",
     "ruff",
     "ty",
+    # memray is included so the full memray lifecycle code path is exercised
+    # by `make test`.  It still ships as an *optional* runtime extra
+    # ([project.optional-dependencies].memray) so end users only install it
+    # when they need native allocation tracing.
+    "memray>=1.10.0; sys_platform != 'win32'",
 ]
 example = [
     "starlette",
@@ -85,6 +93,8 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 # dashboard.py contains inlined HTML/CSS/JS that cannot be line-wrapped
 "fastapi_profiler/dashboard.py" = ["E501"]
+# memory_dashboard.py also contains inlined HTML/CSS for the memory UI page
+"fastapi_profiler/memory_dashboard.py" = ["E501"]
 # test files allow longer lines for readability (assertions, docstrings)
 "test/*.py" = ["E501"]
 # stats.py has a few unavoidably long lines in docstrings/dicts
@@ -108,6 +118,8 @@ per-file-ignores = [
     "fastapi_profiler/dashboard.py:E501",
     "fastapi_profiler/stats.py:E501",
     "fastapi_profiler/profiler.py:E501",
+    "fastapi_profiler/memory_dashboard.py:E501",
+    "fastapi_profiler/memory_middleware.py:E501",
     "test/*.py:E501",
 ]
 

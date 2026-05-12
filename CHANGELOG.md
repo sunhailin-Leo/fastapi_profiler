@@ -1,5 +1,57 @@
 # ChangeLog
 
+### version 1.6.0
+  * **Memory profiler middleware** (`MemoryProfilerMiddleware`): a new,
+    independent ASGI middleware that exposes an HTTP control plane for
+    memory analysis.  Mounted at `/__memory_profiler__` by default.
+  * **`tracemalloc` integration** (standard library, zero extra deps):
+    drive the full lifecycle over HTTP — `start`, `stop`, `snapshot`,
+    `compare`, `snapshots` (list), `status`.  Snapshots are persisted as
+    `.snap` files under a configurable `snapshot_dir`.
+    - `autostart_tracemalloc=True` begins tracing during middleware
+      construction so allocations made at application startup are
+      captured as well.
+    - Configurable frame depth (`tracemalloc_frames`, default 25) and
+      top-N size (`tracemalloc_top`, default 20).
+  * **`memray` integration** (optional dependency, Linux/macOS only):
+    drive `memray.Tracker` start/stop via HTTP and obtain a `.bin`
+    capture file ready to be rendered by the official `memray flamegraph`
+    / `memray tree` / `memray stats` CLIs.  Supports `native_traces`,
+    `follow_fork`, and `trace_python_allocators` flags.
+    - Install with `pip install 'fastapi_profiler[memray]'`.
+    - Returns a structured `503 Service Unavailable` (with reason and
+      import error) on platforms where memray is missing or unsupported.
+  * **Graceful shutdown handling**: any active memray session is
+    finalised automatically on application shutdown so the `.bin` file
+    is never left half-written.
+  * **No built-in authentication** — the dashboard mount path is not
+    protected on purpose; secure it via reverse-proxy ACLs or by setting
+    `filter_paths` on other middlewares.  The new
+    `fastapi_memory_custom_path_example.py` documents recommended
+    deployment patterns.
+  * **New public exports**: `MemoryProfilerMiddleware`,
+    `TracemallocProfiler`, `MemrayProfiler`, `MEMRAY_AVAILABLE`.
+  * **Examples** (under `example/`):
+    - `fastapi_memory_profiler_example.py` — multi-scenario allocation
+      routes (`/alloc/small`, `/alloc/big`, `/alloc/leak`,
+      `/alloc/clear`, `/alloc/stats`).
+    - `fastapi_memory_tracemalloc_client_example.py` — stdlib-only
+      driver that walks the full tracemalloc lifecycle and prints all
+      `.snap` files on disk.
+    - `fastapi_memory_memray_client_example.py` — stdlib-only driver
+      for the memray lifecycle that prints the resulting `.bin` path
+      and the matching `memray flamegraph/tree/stats` commands.
+    - `fastapi_cpu_and_memory_profiler_example.py` — CPU + memory
+      profilers running side-by-side with `filter_paths` isolation.
+    - `fastapi_memory_autostart_example.py` — capture allocations made
+      during application startup via `autostart_tracemalloc=True`.
+    - `fastapi_memory_custom_path_example.py` — custom dashboard path
+      and reverse-proxy protection guidance.
+  * **Tests**: `test/test_memory.py` and `test/test_memory_coverage.py`
+    bring the memory subsystem to ~99% line coverage, including
+    Windows/unavailable branches, tracker rollback on start failure,
+    and full HTTP routing through the dashboard.
+
 ### version 1.5.0
   * **Sampling rate** (`profiler_sample_rate`): profile only a configurable
     fraction of requests (0.0–1.0) to reduce overhead in production.

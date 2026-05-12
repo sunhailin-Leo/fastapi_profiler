@@ -7,8 +7,8 @@ This is useful for diagnosing performance regressions that only appear
 under error conditions.
 """
 import os
-import uvicorn
 
+import uvicorn
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
