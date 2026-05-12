@@ -1,0 +1,169 @@
+name: Release to PyPI
+
+# Triggered when a version tag is pushed, e.g. `git push origin v1.6.0`.
+# Set the PyPI token as a repository secret named `PYPI_API_TOKEN`.
+on:
+  push:
+    tags:
+      - "v*"
+
+# Concurrency guard: never publish two tags in parallel.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write   # required to create a GitHub Release
+
+jobs:
+  # ------------------------------------------------------------------
+  # 1. Sanity check: lint + typecheck + tests on a single matrix entry.
+  #    The full multi-OS / multi-Python matrix already runs on every push
+  #    in `python-app.yml`; this job only re-validates the *exact tagged
+  #    commit* before we publish anything to PyPI.
+  # ------------------------------------------------------------------
+  verify:
+    name: Verify tagged commit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Lint, type check and test
+        run: make check
+
+      - name: Verify tag matches package version
+        run: |
+          set -euo pipefail
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          PKG_VERSION="$(uv run python -c 'from fastapi_profiler import __version__; print(__version__)')"
+          echo "tag    version: ${TAG_VERSION}"
+          echo "package version: ${PKG_VERSION}"
+          if [ "${TAG_VERSION}" != "${PKG_VERSION}" ]; then
+            echo "::error::tag ${GITHUB_REF_NAME} does not match package version ${PKG_VERSION}"
+            exit 1
+          fi
+
+  # ------------------------------------------------------------------
+  # 2. Build sdist + wheel and upload them as workflow artifacts so they
+  #    can be reused by the publish step and inspected from the run page.
+  # ------------------------------------------------------------------
+  build:
+    name: Build distributions
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Build sdist and wheel
+        run: uv build
+
+      - name: List built artifacts
+        run: ls -lh dist/
+
+      - name: Upload dist artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+          retention-days: 14
+
+  # ------------------------------------------------------------------
+  # 3. Publish to PyPI using the user-managed token in GitHub secrets.
+  # ------------------------------------------------------------------
+  publish:
+    name: Publish to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi   # optional: protect the secret behind a GitHub environment
+    steps:
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: false
+
+      - name: Download dist artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish to PyPI
+        env:
+          # `uv publish` reads UV_PUBLISH_TOKEN automatically when it is
+          # set; `__token__` is the conventional username for PyPI tokens
+          # but is unused when a token is supplied via env var.
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+        run: uv publish dist/*
+
+  # ------------------------------------------------------------------
+  # 4. Create a GitHub Release with the matching CHANGELOG section as
+  #    the release body, and attach the built artifacts.
+  # ------------------------------------------------------------------
+  github-release:
+    name: Create GitHub Release
+    needs: publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download dist artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Extract release notes from CHANGELOG.md
+        id: notes
+        run: |
+          set -euo pipefail
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          # Slice the section "### version X.Y.Z" up to (but excluding)
+          # the next "### version " heading.  Falls back to a generic
+          # message when the section cannot be located.
+          NOTES_FILE="$(mktemp)"
+          awk -v ver="### version ${TAG_VERSION}" '
+            $0 == ver { capture=1; next }
+            capture && /^### version / { exit }
+            capture { print }
+          ' CHANGELOG.md > "${NOTES_FILE}"
+          if [ ! -s "${NOTES_FILE}" ]; then
+            echo "Release ${GITHUB_REF_NAME}." > "${NOTES_FILE}"
+          fi
+          {
+            echo "notes_file=${NOTES_FILE}"
+          } >> "${GITHUB_OUTPUT}"
+          echo "----- release notes preview -----"
+          cat "${NOTES_FILE}"
+          echo "---------------------------------"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          body_path: ${{ steps.notes.outputs.notes_file }}
+          files: dist/*
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

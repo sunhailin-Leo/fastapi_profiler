@@ -15,8 +15,8 @@ After starting the server, visit:
 """
 import logging
 import os
-import uvicorn
 
+import uvicorn
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 

@@ -8,8 +8,8 @@ contains the route path, HTTP method, duration in milliseconds, HTTP status
 code, and an optional profile output string captured at request time.
 """
 import os
-import uvicorn
 
+import uvicorn
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 

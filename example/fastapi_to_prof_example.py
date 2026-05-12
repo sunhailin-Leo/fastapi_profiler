@@ -3,13 +3,12 @@ This example shows how to output the profile
 to a .prof file.
 """
 import os
-import uvicorn
 
+import uvicorn
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
 from fastapi_profiler import PyInstrumentProfilerMiddleware
-
 
 app = FastAPI()
 app.add_middleware(

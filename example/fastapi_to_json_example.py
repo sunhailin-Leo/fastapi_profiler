@@ -3,8 +3,8 @@ This example shows how to output the profile
 to json file.
 """
 import os
-import uvicorn
 
+import uvicorn
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 

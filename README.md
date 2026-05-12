@@ -93,6 +93,19 @@ All parameters are passed as keyword arguments to `add_middleware()`.
 | `dashboard_path` | `str` | `"/__profiler__"` | URL prefix for the dashboard. Only used when `enable_dashboard=True`. |
 | `enabled` | `bool` | `True` | Master switch. When `False`, the middleware passes all requests through without profiling. Controllable at runtime via the `/config` API. |
 
+### Memory Profiler Parameters (`MemoryProfilerMiddleware`)
+
+The memory profiler is a **separate middleware** that runs alongside the CPU profiler.  It exposes an HTTP control plane to drive `tracemalloc` (always available) and `memray` (optional native allocator tracker).
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `server_app` | `FastAPI \| None` | `None` | Required to mount the control router and register a shutdown hook that finalises any running memray session. |
+| `memory_dashboard_path` | `str` | `"/__memory_profiler__"` | URL prefix where the memory profiler endpoints are mounted. |
+| `snapshot_dir` | `str` | `"./mem-snapshots"` | Directory used for both tracemalloc `.snap` files and memray `.bin` files. Created on demand. |
+| `tracemalloc_frames` | `int` | `25` | Default frame depth passed to `tracemalloc.start` when no explicit `frames` is supplied via HTTP. |
+| `tracemalloc_top` | `int` | `20` | Default top-N size for `snapshot` / `compare` JSON responses. |
+| `autostart_tracemalloc` | `bool` | `False` | Start `tracemalloc` during middleware construction so allocations from app startup are also captured. |
+
 ## 🚀 Usage Examples
 
 ### Basic — print profile to stdout
@@ -278,6 +291,77 @@ app.add_middleware(
 )
 ```
 
+### Memory profiling — tracemalloc + memray via HTTP
+
+Mount `MemoryProfilerMiddleware` to expose a control plane that lets you start/stop `tracemalloc` and `memray` at runtime and dump snapshots to disk:
+
+```python
+from fastapi import FastAPI
+from fastapi_profiler import MemoryProfilerMiddleware, PyInstrumentProfilerMiddleware
+
+app = FastAPI()
+# CPU profiler (existing)
+app.add_middleware(
+    PyInstrumentProfilerMiddleware,
+    server_app=app,
+    enable_dashboard=True,
+    filter_paths=["/__profiler__", "/__memory_profiler__"],
+)
+# Memory profiler (new, independent)
+app.add_middleware(
+    MemoryProfilerMiddleware,
+    server_app=app,
+    snapshot_dir="./mem-snapshots",
+    autostart_tracemalloc=False,
+)
+```
+
+Drive it with `curl`:
+
+```shell
+# tracemalloc — Python-level allocations, always available
+curl -XPOST localhost:8080/__memory_profiler__/tracemalloc/start \
+     -H "Content-Type: application/json" -d '{"frames": 25}'
+curl -XPOST localhost:8080/__memory_profiler__/tracemalloc/snapshot \
+     -H "Content-Type: application/json" -d '{"top": 20}'
+# ...exercise traffic...
+curl -XPOST localhost:8080/__memory_profiler__/tracemalloc/snapshot
+curl -XPOST localhost:8080/__memory_profiler__/tracemalloc/compare \
+     -H "Content-Type: application/json" -d '{"top": 20}'
+curl -XPOST localhost:8080/__memory_profiler__/tracemalloc/stop
+
+# memray — native + Python allocations, dumps a .bin file
+# Install with:  pip install 'fastapi_profiler[memray]'   (Linux/macOS only)
+curl -XPOST localhost:8080/__memory_profiler__/memray/start \
+     -H "Content-Type: application/json" -d '{"native": true}'
+# ...exercise traffic...
+curl -XPOST localhost:8080/__memory_profiler__/memray/stop
+# → render the resulting .bin with the memray CLI:
+memray flamegraph ./mem-snapshots/memray-<id>.bin
+memray tree       ./mem-snapshots/memray-<id>.bin
+memray stats      ./mem-snapshots/memray-<id>.bin
+```
+
+#### Memory Profiler API endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET`  | `/__memory_profiler__/` | HTML index with usage hints |
+| `GET`  | `/__memory_profiler__/status` | Combined status of both profilers |
+| `GET`  | `/__memory_profiler__/tracemalloc/status` | tracemalloc state (running, frames, traced memory) |
+| `POST` | `/__memory_profiler__/tracemalloc/start` | Body: `{"frames": int?}` |
+| `POST` | `/__memory_profiler__/tracemalloc/stop` | Stop and clear in-memory snapshots |
+| `POST` | `/__memory_profiler__/tracemalloc/snapshot` | Body: `{"top": int?}` — dumps a `.snap` file and returns top-N stats |
+| `POST` | `/__memory_profiler__/tracemalloc/compare` | Body: `{"top": int?, "snapshot_a": str?, "snapshot_b": str?}` — defaults to last two snapshots |
+| `GET`  | `/__memory_profiler__/tracemalloc/snapshots` | List captured snapshot ids and file paths |
+| `GET`  | `/__memory_profiler__/memray/status` | memray availability + current session |
+| `POST` | `/__memory_profiler__/memray/start` | Body: `{"output_path": str?, "native": bool?, "follow_fork": bool?, "trace_python_allocators": bool?}` |
+| `POST` | `/__memory_profiler__/memray/stop` | Finalise the `.bin` capture file |
+
+> **Security note:** the memory profiler endpoints **do not authenticate requests** and can dump heap traces of your process. Protect the path with a reverse proxy ACL, network policy, or by setting `filter_paths=["/__memory_profiler__"]` on any other middleware that might expose it externally.
+
+> **memray availability:** the `memray` extra is a soft dependency. When it is missing or you are on Windows, `/memray/start` returns `503` with a clear `availability` payload; `/memray/status` always works. Install with `pip install 'fastapi_profiler[memray]'`.
+
 ## 📂 Example Files
 
 | File | Description |
@@ -294,6 +378,7 @@ app.add_middleware(
 | [`fastapi_per_route_history_example.py`](example/fastapi_per_route_history_example.py) | Per-route profile history |
 | [`fastapi_runtime_toggle_example.py`](example/fastapi_runtime_toggle_example.py) | Runtime enable/disable |
 | [`fastapi_full_features_example.py`](example/fastapi_full_features_example.py) | All features combined |
+| [`fastapi_memory_profiler_example.py`](example/fastapi_memory_profiler_example.py) | Memory profiler (tracemalloc + memray) via HTTP control plane |
 
 ## ⛏ Development
 

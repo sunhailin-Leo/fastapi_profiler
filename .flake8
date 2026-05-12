@@ -6,4 +6,6 @@ per-file-ignores =
     fastapi_profiler/dashboard.py:E501
     fastapi_profiler/stats.py:E501
     fastapi_profiler/profiler.py:E501
+    fastapi_profiler/memory_dashboard.py:E501
+    fastapi_profiler/memory_middleware.py:E501
     test/*.py:E501
